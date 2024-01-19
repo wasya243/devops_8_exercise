@@ -1,68 +1,132 @@
 import { useState, useEffect } from 'react';
+import uuid from 'react-uuid'
+import axios from 'axios';
+
+import './App.css';
 
 const BASE_URL = process.env.REACT_APP_SERVER_URL;
 
-const UserItem = ({firstName, lastName}) => {
+const TodoItem = ({ todo, handleRemove, handleUpdate }) => {
   return (
-    <div>
-      <p>First name: {firstName}</p>
-      <p>Last name: {lastName}</p>
+    <div className="todo-item">
+      <p className={`text ${todo.completed ? 'completed' : ''}`} onClick={() => handleUpdate(todo._id, !todo.completed)}>text: {todo.text}</p>
+      <button className="delete-btn" onClick={() => handleRemove(todo._id)}>X</button>
     </div>
   )
 }
 
-const UserList = (props) => {
-  const { users = [] } = props;
+const TodoItemList = (props) => {
+  const { todos, handleRemove, handleUpdate = [] } = props;
 
-  const items = users.map(u => (
-      <UserItem
-        key={u._id}
-        firstName={u.firstName}
-        lastName={u.lastName}
+  const todoItems = todos.map(todo => (
+      <TodoItem
+        key={todo._id}
+        todo={todo}
+        handleRemove={handleRemove}
+        handleUpdate={handleUpdate}
       />
     )
-  )
+  );
 
   return (
     <div>
-      {items}
+      {todoItems}
     </div>
   )
 }
 
 const App = () => {
-  const [users, setUsers] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [todos, setTodos] = useState([]);
+  const [todoText, setTodoText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchUsers = async () => {
+  const handleTodoTextInput = (e) => {
+    const text = e.target.value;
+    setTodoText(text);
+  }
+
+  const fetchTodos = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${BASE_URL}/api/users`);
-      const parsed = await res.json();
+      const { data } = await axios.get(`${BASE_URL}/api/todos/${currentUserId}`);
 
       setIsLoading(false);
-      setUsers(parsed);
+      setTodos(data);
     } catch (err) {
       setIsLoading(false);
     }
   }
 
+  const handleAddTodo = async (userId, todoText) => {
+    try {
+      await axios.post(`${BASE_URL}/api/todo`, { text: todoText, userId });
+
+      setTodoText('');
+      fetchTodos(userId);
+    } catch (err) {
+      console.log('error happened during removal', err);
+    }
+  }
+
+  const handleRemove = async (id, userId) => {
+    try {
+      await axios.delete(`${BASE_URL}/api/todo/${id}`);
+
+      fetchTodos(userId);
+    } catch (err) {
+      console.log('error happened during removal', err);
+    }
+  }
+
+  const handleUpdate = async (id, completed, userId) => {
+    try {
+      await axios.put(`${BASE_URL}/api/todo/${id}`, { completed });
+
+      fetchTodos(userId);
+    } catch (err) {
+      console.log('error happened during update', err);
+    }
+  }
+
   useEffect(() => {
-    fetchUsers();
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      const generatedUserId = uuid();
+      setCurrentUserId(generatedUserId);
+      localStorage.setItem('userId', generatedUserId);
+    } else {
+      setCurrentUserId(userId);
+    }
   }, [])
 
+  useEffect(() => {
+    if (currentUserId) {
+      fetchTodos();
+    }
+  }, [currentUserId])
+
   return (
-    <>
+    <div className="container">
+      <div className="search-container">
+        <input className="text-input" onInput={handleTodoTextInput} value={todoText} />
+        <button onClick={() => handleAddTodo(currentUserId, todoText)}>add todo</button>
+      </div>
+
       {
-        !users.length && !isLoading && <div>no users</div>
+        !todos.length && !isLoading && <div>no todos</div>
       }
       {
         isLoading && <div>loading</div>
       }
       {
-        users.length && !isLoading && <UserList users={users} />
+        todos.length && !isLoading && <TodoItemList
+          todos={todos}
+          handleRemove={(id) => handleRemove(id, currentUserId)}
+          handleUpdate={(id, completed) => handleUpdate(id, completed, currentUserId)}
+        />
       }
-    </>
+    </div>
   )
 }
 

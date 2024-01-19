@@ -1,8 +1,11 @@
 const express = require('express');
 const { uuid } = require('uuidv4');
 const cors = require('cors');
+const bodyParser = require('body-parser');
+const { STATUS_CODES } = require('http');
 
-const { USERS } = require('./users');
+const db = require('./db');
+const api = require('./api');
 
 require('dotenv').config();
 
@@ -11,7 +14,9 @@ const PORT = process.env.PORT;
 
 // serve react build
 app.use(express.static('build'));
+// mostly for local dev, since there is no reason to do this in prod, cause of same origin
 app.use(cors());
+app.use(bodyParser.json());
 
 app.use((req, res, next) => {
   console.log(`Request id: ${uuid()}, method: ${req.method}, url: ${req.url}`);
@@ -19,24 +24,17 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.send({
     status: 'ok'
   })
 });
 
-app.get('/api/users', async (req, res) => {
-  try {
-    res.send(USERS);
-  } catch (err) {
-    console.log(err);
-
-    res.status(500).send('internal server error')
-  }
-});
+app.use(api);
 
 app.get('*', function(req, res){
   res.status(404).send('not found');
 });
 
-app.listen(PORT, () => console.log(`Server is listening on ${PORT}`));
+db.connect()
+  .then(() => app.listen(PORT, () => console.log(`Server is listening on ${PORT}`)));
