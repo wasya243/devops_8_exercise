@@ -15,7 +15,7 @@ const PORT = process.env.PORT;
 // serve react build
 app.use(express.static('build'));
 // mostly for local dev, since there is no reason to do this in prod, cause of same origin
-app.use(cors());
+// app.use(cors());
 app.use(bodyParser.json());
 
 app.use((req, res, next) => {
