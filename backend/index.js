@@ -12,7 +12,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT;
 
-const whitelist = ['http://devops-exercise-11.s3-website-eu-west-1.amazonaws.com/']
+const whitelist = ['http://devops-exercise-11.s3-website-eu-west-1.amazonaws.com']
 
 const corsOptions = {
   origin: (origin, cb) => {
